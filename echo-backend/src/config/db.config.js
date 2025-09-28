@@ -1,7 +1,11 @@
+import dotenv from "dotenv";
+
+dotenv.config();
+
 export default {
     HOST: "localhost",
     USER: "postgres",
-    PASSWORD: "1234",
+    PASSWORD: process.env.DATABASE_PASSWORD,
     DB: "echodb",
     dialect: "postgres",
     PORT: 5432,

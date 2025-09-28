@@ -1,15 +1,18 @@
 import express from 'express';
+import verify_jwt from './middlewares/auth.js';
 import { initDB } from './database.js';
 import userRoutes from './routes/userRoutes.js';
 
 const app = express();
 
-
+//Middleware
 app.use(express.json());
+app.use(verify_jwt);
 
-app.use("/api/createuser", userRoutes);
+//Routes
+app.use("/api/user", userRoutes);
 
-
+//Database initialization and start server
 initDB()
   .then(() => {
     app.listen(3000, () => {

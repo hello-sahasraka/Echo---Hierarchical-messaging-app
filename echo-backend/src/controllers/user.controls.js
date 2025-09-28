@@ -1,6 +1,10 @@
+import jwt from "jsonwebtoken";
 import db from "../models/sequelize.js";
 import bcrypt from "bcrypt";
+import dotenv from "dotenv";
 import { userSchema } from "./../schemas/user.schema.js";
+
+dotenv.config();
 
 const Op = db.Sequelize.Op;
 const User = db.users;
@@ -45,3 +49,46 @@ export const create_user = (req, res) => {
             });
         });
 };
+
+export const user_login = async (req, res) => {
+    const { email, password } = req.body;
+
+    try {
+        const user = await User.findOne({ where: { email } });
+
+        //Check user
+        if (!user) {
+            return res.status(404).json({ message: "User not found" });
+        }
+
+        //Check password
+        const valid_password = bcrypt.compareSync(password, user.password)
+
+        if (!valid_password) {
+            return res.status(401).json({ message: "Invalid credentials" });
+        }
+
+        //Generate JWT key
+        const token = jwt.sign(
+            {id: user.id, role: user.role},
+            process.env.JWT_KEY,
+        );
+
+        res.json({
+            message: "Login successful",
+            token,
+            user: {
+                id: user.id,
+                name: user.name,
+                email: user.email,
+                role: user.role,
+                parent_id: user.parent_id
+            }
+        });
+
+    } catch (error) {
+        res.status(500).json({
+            message: error.message || "Some error occurred while logging in.",
+        });
+    }
+}
