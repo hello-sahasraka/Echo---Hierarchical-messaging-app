@@ -3,6 +3,7 @@ import db from "../models/sequelize.js";
 import bcrypt from "bcrypt";
 import dotenv from "dotenv";
 import { userSchema } from "./../schemas/user.schema.js";
+import { Sequelize } from "sequelize";
 
 dotenv.config();
 
@@ -70,7 +71,7 @@ export const user_login = async (req, res) => {
 
         //Generate JWT key
         const token = jwt.sign(
-            {id: user.id, role: user.role},
+            { id: user.id, role: user.role },
             process.env.JWT_KEY,
         );
 
@@ -90,5 +91,70 @@ export const user_login = async (req, res) => {
         res.status(500).json({
             message: error.message || "Some error occurred while logging in.",
         });
+    }
+}
+
+export const get_all_users = async (req, res) => {
+
+    try {
+        const users = await User.findAll({
+            attributes: ["id", "name", "email", "role", "parent_id"],
+        });
+
+        if (!users || users.length === 0) {
+            return res.status(404).json({ message: "No users found" });
+        }
+
+        res.status(200).json({
+            message: "Users fetched successfully",
+            users
+        })
+
+    } catch (err) {
+       res.status(500).json({
+            message: err.message || "Some error occurred while fetching users.",
+        }); 
+    }
+} 
+
+
+export const get_subordinates = async (req, res) => {
+    const {user_id} = req.params
+    //Query
+    const query = `
+     WITH RECURSIVE subordinates AS (
+      SELECT id, name, parent_id
+      FROM users
+      WHERE parent_id = :user_id
+
+      UNION ALL
+
+      SELECT u.id, u.name, u.parent_id
+      FROM users u
+      INNER JOIN subordinates s ON u.parent_id = s.id
+        )
+        SELECT * FROM subordinates;`
+
+    try {
+        //Execute query
+        const subordinates = await db.sequelize.query(query, {
+            
+            replacements: { user_id }, // safe parameter binding
+            type: db.Sequelize.QueryTypes.SELECT
+        })
+
+        console.log("subordinates:", subordinates);
+
+
+        res.json({
+            message: "Subordinates fetched successfully",
+            subordinates: subordinates
+        });
+
+    } catch (err) {
+        res.status(500).json({
+            message: err.message || "Error fetching subordinates."
+        });
+
     }
 }

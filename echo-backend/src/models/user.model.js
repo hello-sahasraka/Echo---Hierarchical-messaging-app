@@ -38,6 +38,8 @@ export default (sequelize, Sequelize) => {
             allowNull: false,
             defaultValue: Sequelize.NOW,
         }
+    }, {
+        timestamps: false 
     });
     return User;
 };
