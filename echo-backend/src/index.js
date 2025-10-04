@@ -1,13 +1,20 @@
 import express from 'express';
+import http from "http";
+import { setup_socket } from './socket/socket.js'; 
 import verify_jwt from './middlewares/auth.js';
 import { initDB } from './database.js';
 import userRoutes from './routes/userRoutes.js';
 
 const app = express();
+const server = http.createServer(app);
 
 //Middleware
 app.use(express.json());
 app.use(verify_jwt);
+
+
+//socket.io
+setup_socket(server);
 
 //Routes
 app.use("/api/user", userRoutes);

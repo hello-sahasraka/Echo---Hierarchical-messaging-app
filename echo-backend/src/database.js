@@ -1,6 +1,14 @@
 import db from "./models/sequelize.js";
 
 export async function initDB() {
+
+  // try {
+  //   await db.messages.sync({ force: true });
+  //   console.log("MyModel table dropped and recreated.");
+  // } catch (err) {
+  //   console.error("Error recreating table:", err);
+  // }
+  
   try {
     await db.sequelize.authenticate();
     console.log("Database connected successfully.");
@@ -10,4 +18,5 @@ export async function initDB() {
   } catch (err) {
     console.error("Database initialization failed:");
   }
+
 }

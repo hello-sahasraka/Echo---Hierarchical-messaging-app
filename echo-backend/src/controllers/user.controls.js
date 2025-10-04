@@ -3,7 +3,7 @@ import db from "../models/sequelize.js";
 import bcrypt from "bcrypt";
 import dotenv from "dotenv";
 import { userSchema } from "./../schemas/user.schema.js";
-import { Sequelize } from "sequelize";
+// import { Sequelize } from "sequelize";
 
 dotenv.config();
 
@@ -12,6 +12,15 @@ const User = db.users;
 
 // Create and Save a new User
 export const create_user = (req, res) => {
+
+    if (!req.user) {
+        res.status(401).json({
+            message: "You are not authorized"
+        })
+
+        return;
+    }
+
     const userData = req.body;
     const validated = userSchema.safeParse(userData);
 
@@ -111,15 +120,15 @@ export const get_all_users = async (req, res) => {
         })
 
     } catch (err) {
-       res.status(500).json({
+        res.status(500).json({
             message: err.message || "Some error occurred while fetching users.",
-        }); 
+        });
     }
-} 
+}
 
 
 export const get_subordinates = async (req, res) => {
-    const {user_id} = req.params
+    const { user_id } = req.params
     //Query
     const query = `
      WITH RECURSIVE subordinates AS (
@@ -138,23 +147,47 @@ export const get_subordinates = async (req, res) => {
     try {
         //Execute query
         const subordinates = await db.sequelize.query(query, {
-            
+
             replacements: { user_id }, // safe parameter binding
             type: db.Sequelize.QueryTypes.SELECT
         })
 
         console.log("subordinates:", subordinates);
 
-
-        res.json({
-            message: "Subordinates fetched successfully",
-            subordinates: subordinates
-        });
+        return subordinates;
+        // res.json({
+        //     message: "Subordinates fetched successfully",
+        //     subordinates: subordinates
+        // });
 
     } catch (err) {
         res.status(500).json({
             message: err.message || "Error fetching subordinates."
         });
+    }
+}
 
+export const delete_user = async (req, res) => {
+    const { user_id } = req.params;
+
+    if (!req.user) {
+        res.status(401).json({
+            message: "You are not authorized"
+        })
+
+        return;
+    }
+
+    try {
+        await User.destroy({
+            where: {
+                id: user_id
+            }
+        });
+
+    } catch (err) {
+        res.status(500).json({
+            message: err.message || "Error deleting user."
+        });
     }
 }

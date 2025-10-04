@@ -32,6 +32,15 @@ export default (sequelize, Sequelize) => {
             type: Sequelize.TEXT,
             allowNull: false,
         },
+        delivered: {
+            type: Sequelize.BOOLEAN,
+            allowNull: true,
+        },
+
+        delivered_at: {
+            type: Sequelize.DATE,
+            allowNull: true,
+        },
         isRead: {
             type: Sequelize.BOOLEAN,
             defaultValue: false,
