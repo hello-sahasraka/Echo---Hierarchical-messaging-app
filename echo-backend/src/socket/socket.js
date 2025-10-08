@@ -54,21 +54,30 @@ export const setup_socket = (server) => {
         }
 
         // Handle sending messages
-        socket.on("send_message", async ({ content }, ack) => {
+        socket.on("send_message", async ({ content,  recipientId}, ack) => {
             if (!content || !content.trim()) return ack({ ok: false });
 
             try {
-                const subordinates = get_subordinates();
+                const senderId = userId
+                let recipients = [];
 
-                for (const sub of subordinates) {
+                if (!recipientId) {
+                    const subordinates = await get_subordinates(senderId);
+                    recipients = subordinates.map(sub => sub.id);
+                }
+                else {
+                    recipients = [recipientId]; 
+                }
+
+                for (const rid of recipients) {
                     const msg = await Message.create({
                         sender_id: userId,
-                        recipient_id: sub.id,
+                        recipient_id: rid,
                         content,
                         delivered: false
                     });
 
-                    const sockets = onlineUsers.get(String(sub.id));
+                    const sockets = onlineUsers.get(String(rid));
 
                     if (sockets && sockets.size > 0) {
                         for (const sid of sockets) {

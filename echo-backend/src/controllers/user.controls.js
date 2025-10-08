@@ -3,6 +3,7 @@ import db from "../models/sequelize.js";
 import bcrypt from "bcrypt";
 import dotenv from "dotenv";
 import { userSchema } from "./../schemas/user.schema.js";
+import { where } from "sequelize";
 // import { Sequelize } from "sequelize";
 
 dotenv.config();
@@ -125,6 +126,19 @@ export const get_all_users = async (req, res) => {
         });
     }
 }
+
+export const get_user_by_id = async (userId) => {
+  try {
+    const user = await User.findOne({
+      where: { id: userId },
+    });
+
+    return user; 
+  } catch (err) {
+    console.error("Error fetching user:", err);
+    throw err;
+  }
+};
 
 
 export const get_subordinates = async (req, res) => {
