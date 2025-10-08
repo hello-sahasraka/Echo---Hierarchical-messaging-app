@@ -6,6 +6,16 @@ export default (sequelize, Sequelize) => {
             autoIncrement: true,
             allowNull: false,
         },
+        Chat_id: {
+            type: Sequelize.INTEGER,
+            allowNull: false,
+            references: {
+                model: 'chats',
+                key: 'id'
+            },
+            onUpdate: 'CASCADE',
+            onDelete: 'CASCADE'
+        },
         sender_id: {
             type: Sequelize.INTEGER,
             allowNull: false,
