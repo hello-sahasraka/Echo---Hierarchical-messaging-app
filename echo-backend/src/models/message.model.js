@@ -6,7 +6,7 @@ export default (sequelize, Sequelize) => {
             autoIncrement: true,
             allowNull: false,
         },
-        Chat_id: {
+        chat_id: {
             type: Sequelize.INTEGER,
             allowNull: false,
             references: {

@@ -3,10 +3,16 @@ import jwt from "jsonwebtoken";
 import dotenv from "dotenv";
 import db from "../models/sequelize.js";
 import { get_subordinates } from "../controllers/user.controls.js";
+import { where } from "sequelize";
+import { get_chat_list } from "../controllers/chat.controls.js";
 
 dotenv.config();
 
+const User = db.users;
 const Message = db.messages;
+const Participant = db.participants;
+const Chat = db.chats;
+
 const onlineUsers = new Map();
 
 export const setup_socket = (server) => {
@@ -54,30 +60,40 @@ export const setup_socket = (server) => {
         }
 
         // Handle sending messages
-        socket.on("send_message", async ({ content,  recipientId}, ack) => {
-            if (!content || !content.trim()) return ack({ ok: false });
+        socket.on("send_message", async ({ chatId, content }, ack) => {
+            if (!chatId || !content.trim()) return ack({ ok: false, error: "Invalid input" });
 
             try {
                 const senderId = userId
-                let recipients = [];
 
-                if (!recipientId) {
-                    const subordinates = await get_subordinates(senderId);
-                    recipients = subordinates.map(sub => sub.id);
-                }
-                else {
-                    recipients = [recipientId]; 
+                const participant = await Participant.findOne({
+                    where: { chat_id: chatId, user_id: senderId },
+                });
+
+                if (!participant) {
+                    return ack({ ok: false, error: "Not a participant in this chat" });
                 }
 
-                for (const rid of recipients) {
+                await Chat.update(
+                    { last_message: content.trim() },
+                    { where: { id: chatId } }
+                );
+
+                const participants = await Participant.findAll({ where: { chat_id: chatId } });
+
+
+                for (const p of participants) {
+                    if (String(p.user_id) === String(senderId)) continue;
+
                     const msg = await Message.create({
-                        sender_id: userId,
-                        recipient_id: rid,
-                        content,
-                        delivered: false
+                        chat_id: chatId,
+                        sender_id: senderId,
+                        recipient_id: p.user_id,
+                        content: content.trim(),
+                        delivered: false,
                     });
 
-                    const sockets = onlineUsers.get(String(rid));
+                    const sockets = onlineUsers.get(String(p.user_id));
 
                     if (sockets && sockets.size > 0) {
                         for (const sid of sockets) {
@@ -93,10 +109,22 @@ export const setup_socket = (server) => {
                 }
 
                 ack({ ok: true });
-            } catch {
-                ack({ ok: false });
+            } catch (err) {
+                console.error("send_message error:", err);
+                ack({ ok: false, error: err.message });
             }
         });
+
+        //Get all chats
+        socket.on("get_all_chats", async (ack) => {
+            try {
+                const chats = await get_chat_list(userId)
+                ack({ ok: true, chats });
+            } catch {
+                console.error("get_chat_list error:", err);
+                ack({ ok: false });
+            }
+        })
 
         // On disconnect
         socket.on("disconnect", () => {

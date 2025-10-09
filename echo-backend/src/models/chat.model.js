@@ -14,6 +14,10 @@ export default (sequelize, Sequelize) => {
                 key: 'id'
             },
         },
+        last_message: {
+            type: Sequelize.STRING,
+            allowNull: false,
+        },
         is_group: {
             type: Sequelize.BOOLEAN,
             allowNull: false,
