@@ -21,9 +21,14 @@ export default (sequelize, Sequelize) => {
             onDelete: 'CASCADE'
 
         },
+        role: {
+            type: Sequelize.STRING,
+            allowNull: false,
+        },
         joined_at: {
             type: Sequelize.DATE,
             allowNull: true,
+            defaultValue: Sequelize.NOW,
         }
     });
     return Participant;

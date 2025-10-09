@@ -6,10 +6,19 @@ export default (sequelize, Sequelize) => {
             autoIncrement: true,
             allowNull: false,
         },
+        creator_id: {
+            type: Sequelize.INTEGER,
+            allowNull: false,
+            references: {
+                model: 'users',
+                key: 'id'
+            },
+        },
         is_group: {
             type: Sequelize.BOOLEAN,
-            allowNull: false
-        }  
+            allowNull: false,
+            defaultValue: false,
+        }
     });
     return Chat;
 };
