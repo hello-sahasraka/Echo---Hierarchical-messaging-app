@@ -1,14 +1,50 @@
 'use client'
+import { useRouter } from "next/navigation";
 import { useState } from "react";
+import toast from "react-hot-toast";
 
 export default function Home() {
+  const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  const handleLogIn = () => {
-    console.log("Email:", email);
-    console.log("Password:", password);
+  const handleLogIn = async () => {
+    setLoading(true);
+    try {
+      const data = await toast.promise(
+        fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/user/login`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ email: email.trim(), password: password.trim() }),
+        }).then(async (res) => {
+          if (!res.ok) {
+            const errData = await res.json();
+            throw new Error(errData.message || 'Login failed');
+          }
+          return res.json();
+        }),
+        {
+          loading: 'Logging in...',
+          success: <b>Login successful!</b>,
+          error: <b>Login failed.</b>,
+        }
+      );
+      console.log('Login response:', data);
+
+      localStorage.setItem('token', data.token)
+      localStorage.setItem('user', JSON.stringify(data.user))
+      router.push("/chat");
+    } catch (err) {
+      console.error('Error caught in handleLogIn:', err);
+      setPassword('');
+    } finally {
+      setLoading(false);
+    }
   };
+
 
   return (
     <div className="w-full h-[calc(100vh-75px)] flex justify-center items-center border-2">
@@ -36,8 +72,9 @@ export default function Home() {
         <button
           className="btn btn-neutral mt-4 w-full"
           onClick={handleLogIn}
+          disabled={loading}
         >
-          Login
+          {loading ? 'Logging in...' : 'Login'}
         </button>
       </fieldset>
     </div>

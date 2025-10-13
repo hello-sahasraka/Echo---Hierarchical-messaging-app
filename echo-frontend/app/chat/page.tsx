@@ -3,6 +3,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import ChatForm from '../components/ChatForm';
 import ChatMessage from '../components/ChatMessage';
+import Image from 'next/image';
 
 interface Message {
   sender: string;
@@ -65,34 +66,34 @@ const Chat: React.FC = () => {
 
         {/* Chat List */}
         <div className="overflow-y-auto h-[calc(100%-80px)]">
-  {chats.map((chat) => (
-    <div
-      key={chat.id}
-      onClick={() => setActiveChat(chat)}
-      className={`p-3 cursor-pointer border-b hover:bg-gray-100 transition flex gap-4 ${
-        activeChat?.id === chat.id ? 'bg-gray-200' : ''
-      }`}
-    >
-      <div className="w-[40px] h-[40px] rounded-full font-semibold bg-gray-300 border flex justify-center items-center">
-        {chat.name[0]}
-      </div>
-      <div>
-        <div className="flex gap-2 items-center">
-          <p className="font-semibold">{chat.name}</p>
+          {chats.map((chat) => (
+            <div
+              key={chat.id}
+              onClick={() => setActiveChat(chat)}
+              className={`p-3 cursor-pointer border-b hover:bg-gray-100 transition flex gap-4 ${activeChat?.id === chat.id ? 'bg-gray-200' : ''
+                }`}
+            >
+              <div className="w-[40px] h-[40px] rounded-full font-semibold bg-gray-300 border flex justify-center items-center">
+                {chat.name[0]}
+              </div>
+              <div>
+                <div className="flex gap-2 items-center">
+                  <p className="font-semibold">{chat.name}</p>
+                </div>
+                <p className="text-sm text-gray-500 truncate">{chat.lastMessage}</p>
+              </div>
+            </div>
+          ))}
         </div>
-        <p className="text-sm text-gray-500 truncate">{chat.lastMessage}</p>
-      </div>
-    </div>
-  ))}
-</div>
 
       </div>
 
       {/* Chat Window */}
       <div className="w-2/3 flex flex-col">
         {!activeChat ? (
-          <div className="flex items-center justify-center h-full text-gray-400">
-            Select a chat to start messaging
+          <div className="flex flex-col items-center justify-center h-full text-gray-400">
+            <Image src="/Empty.png" alt="empty" width={200} height={200} />
+            <p>Select a chat to start messaging</p>
           </div>
         ) : (
           <>

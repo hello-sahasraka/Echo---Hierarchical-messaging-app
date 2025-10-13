@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import { Toaster } from "react-hot-toast";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -30,7 +31,10 @@ export default function RootLayout({
             <h1 className="text-xl font-semibold px-3 py-2 rounded hover:bg-gray-300 hover:text-black transition">Echo</h1>
           </div>
         </div>
-        <div className="flex justify-center">{children}</div>
+        <div className="flex justify-center">
+          {children}
+          <Toaster position="top-right" />
+        </div>
       </body>
     </html>
   );
