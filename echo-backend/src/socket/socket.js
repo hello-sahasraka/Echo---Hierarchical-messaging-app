@@ -2,8 +2,6 @@ import { Server } from "socket.io";
 import jwt from "jsonwebtoken";
 import dotenv from "dotenv";
 import db from "../models/sequelize.js";
-import { get_subordinates } from "../controllers/user.controls.js";
-import { where } from "sequelize";
 import { get_chat_list } from "../controllers/chat.controls.js";
 
 dotenv.config();
@@ -23,10 +21,13 @@ export const setup_socket = (server) => {
     // Middleware to authenticate user
     io.use((socket, next) => {
         const token = socket.handshake.auth?.token;
+        // const token = socket.handshake.query.token;
+
         if (!token) return next(new Error("No token"));
 
         try {
             const payload = jwt.verify(token, process.env.JWT_KEY);
+            
             socket.data.userId = String(payload.id);
             next();
         } catch (err) {
@@ -50,7 +51,7 @@ export const setup_socket = (server) => {
 
         // Send undelivered messages
         for (const msg of undelivered) {
-            socket.emit("new_messages", msg.toJSON(), async (ack) => {
+            socket.emit("new_message", msg.toJSON(), async (ack) => {
                 if (ack) {
                     msg.delivered = true;
                     msg.delivered_at = new Date();
@@ -58,13 +59,13 @@ export const setup_socket = (server) => {
                 }
             });
         }
-
         // Handle sending messages
         socket.on("send_message", async ({ chatId, content }, ack) => {
             if (!chatId || !content.trim()) return ack({ ok: false, error: "Invalid input" });
 
             try {
-                const senderId = userId
+                const senderId = userId;
+                let participants = [];
 
                 const participant = await Participant.findOne({
                     where: { chat_id: chatId, user_id: senderId },
@@ -79,8 +80,11 @@ export const setup_socket = (server) => {
                     { where: { id: chatId } }
                 );
 
-                const participants = await Participant.findAll({ where: { chat_id: chatId } });
-
+                if (participant.role === "creator") {
+                    participants = await Participant.findAll({ where: { chat_id: chatId } });
+                } else {
+                    participants = await Participant.findAll({ where: { chat_id: chatId, role: "creator" } });
+                }
 
                 for (const p of participants) {
                     if (String(p.user_id) === String(senderId)) continue;
@@ -120,7 +124,7 @@ export const setup_socket = (server) => {
             try {
                 const chats = await get_chat_list(userId)
                 ack({ ok: true, chats });
-            } catch {
+            } catch (err) {
                 console.error("get_chat_list error:", err);
                 ack({ ok: false });
             }

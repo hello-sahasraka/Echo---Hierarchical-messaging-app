@@ -8,7 +8,6 @@ import { where } from "sequelize";
 
 dotenv.config();
 
-const Op = db.Sequelize.Op;
 const User = db.users;
 
 // Create and Save a new User
@@ -141,8 +140,8 @@ export const get_user_by_id = async (userId) => {
 };
 
 
-export const get_subordinates = async (req, res) => {
-    const { user_id } = req.params
+export const get_subordinates = async (user_id) => {
+    // const { user_id } = req.params
     //Query
     const query = `
      WITH RECURSIVE subordinates AS (

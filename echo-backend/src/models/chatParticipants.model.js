@@ -1,6 +1,6 @@
 export default (sequelize, Sequelize) => {
     const Participant = sequelize.define("participant", {
-        Chat_id: {
+        chat_id: {
             type: Sequelize.INTEGER,
             allowNull: false,
             references: {

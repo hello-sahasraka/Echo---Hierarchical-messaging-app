@@ -17,6 +17,7 @@ export default (sequelize, Sequelize) => {
         last_message: {
             type: Sequelize.STRING,
             allowNull: false,
+            defaultValue: "None",
         },
         is_group: {
             type: Sequelize.BOOLEAN,
