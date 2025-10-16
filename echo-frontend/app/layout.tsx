@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { Toaster } from "react-hot-toast";
+import { SocketProvider } from "../app/context/SocketContext";
+// @ts-ignore: side-effect import of CSS; add a global declaration file (e.g. globals.d.ts) to type CSS imports properly
 import "./globals.css";
 
 const geistSans = Geist({
@@ -32,7 +34,7 @@ export default function RootLayout({
           </div>
         </div>
         <div className="flex justify-center">
-          {children}
+          <SocketProvider>{children}</SocketProvider>
           <Toaster position="top-right" />
         </div>
       </body>

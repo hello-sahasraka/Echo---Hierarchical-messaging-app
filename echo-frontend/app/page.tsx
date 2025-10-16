@@ -2,6 +2,7 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import toast from "react-hot-toast";
+import { reset_socket } from "./utils/socket";
 
 export default function Home() {
   const router = useRouter();
@@ -36,6 +37,7 @@ export default function Home() {
 
       localStorage.setItem('token', data.token)
       localStorage.setItem('user', JSON.stringify(data.user))
+      reset_socket(data.token);
       router.push("/chat");
     } catch (err) {
       console.error('Error caught in handleLogIn:', err);

@@ -4,13 +4,22 @@ import React, { useState, useRef, useEffect } from 'react';
 import ChatForm from '../components/ChatForm';
 import ChatMessage from '../components/ChatMessage';
 import Image from 'next/image';
+import { useSocket } from '../context/SocketContext';
+import toast from 'react-hot-toast';
 
-interface Message {
-  sender: string;
-  message: string;
+interface Sender {
+  id: number;
+  name: string;
 }
 
-interface Chat {
+interface Message {
+  sender: Sender;
+  sender_id: number;
+  content: string;
+  createdAt?: string;
+}
+
+interface ChatItem {
   id: number;
   name: string;
   lastMessage: string;
@@ -18,24 +27,100 @@ interface Chat {
 }
 
 const Chat: React.FC = () => {
-  const [chats, setChats] = useState<Chat[]>([
+  const socket = useSocket();
+  const [chats, setChats] = useState<ChatItem[]>([
     { id: 1, name: 'Alex', lastMessage: 'Hey, how are you?', messages: [] },
     { id: 2, name: 'Maya', lastMessage: 'Meeting at 3pm?', messages: [] },
   ]);
 
-
-  const [activeChat, setActiveChat] = useState<Chat | null>(null);
-  const [username] = useState('You');
+  const [activeChat, setActiveChat] = useState<ChatItem | null>(null);
+  const [username, setUsername] = useState<string>('You');
+  const [userId, setUserId] = useState<number | null>(null);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
 
+  //Load user data safely
+  useEffect(() => {
+    const storedUser = localStorage.getItem('user');
+    if (storedUser) {
+      const parsedUser = JSON.parse(storedUser);
+      setUsername(parsedUser.name || 'You');
+      setUserId(parsedUser.id || null);
+    }
+  }, []);
+
+  //Fetch chat List when socket connects
+  useEffect(() => {
+    if (!socket) return;
+
+    const fetchChats = () => {
+      socket.emit('get_all_chats', (response: { ok: boolean; chats: ChatItem[] }) => {
+        if (response.ok) {
+          setChats(response.chats);
+        } else {
+          toast.error('Failed to fetch chats');
+        }
+      });
+    };
+
+    // fetch immediately if already connected, otherwise wait for connect
+    if (socket.connected) {
+      fetchChats();
+    } else {
+      socket.once('connect', fetchChats);
+    }
+
+    // Listen for real-time messages from server.
+    const onNewMessage = (payload: { chatId: number; message: Message }) => {
+      const { chatId, message } = payload;
+
+      setChats((prev) =>
+        prev.map((c) =>
+          c.id === chatId
+            ? { ...c, messages: [...c.messages, message], lastMessage: message.content }
+            : c
+        )
+      );
+
+      setActiveChat((prev) =>
+        prev && prev.id === chatId ? { ...prev, messages: [...prev.messages, message] } : prev
+      );
+    };
+
+    socket.on('new_message', onNewMessage);
+
+    return () => {
+      socket.off('connect', fetchChats);
+      socket.off('new_message', onNewMessage);
+    };
+  }, [socket]);
+
+  //Auto scroll to bottom
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [activeChat?.messages]);
 
+  //Send message handler
   const handleSendMessage = (text: string) => {
-    if (!activeChat) return;
+    if (!activeChat || !socket || userId === null) return;
 
-    const newMessage: Message = { sender: username, message: text };
+    socket.emit(
+      'send_message',
+      { chatId: activeChat.id, content: text },
+      (response: { ok: boolean; error?: string }) => {
+        if (!response.ok) {
+          toast.error(response.error || 'Failed to send message');
+        }
+      }
+    );
+
+    const newMessage: Message = {
+      sender: { id: userId, name: username },
+      sender_id: userId,
+      content: text,
+      createdAt: new Date().toISOString(),
+    };
+
+    //Update chat list
     setChats((prevChats) =>
       prevChats.map((chat) =>
         chat.id === activeChat.id
@@ -48,10 +133,9 @@ const Chat: React.FC = () => {
       )
     );
 
+    //Update active chat
     setActiveChat((prev) =>
-      prev
-        ? { ...prev, messages: [...prev.messages, newMessage] }
-        : prev
+      prev ? { ...prev, messages: [...prev.messages, newMessage] } : prev
     );
   };
 
@@ -85,7 +169,6 @@ const Chat: React.FC = () => {
             </div>
           ))}
         </div>
-
       </div>
 
       {/* Chat Window */}
@@ -107,9 +190,10 @@ const Chat: React.FC = () => {
               {activeChat.messages.map((msg, index) => (
                 <ChatMessage
                   key={index}
-                  message={msg.message}
-                  sender={msg.sender}
-                  isSystemMessage={msg.sender !== username}
+                  message={msg.content}
+                  sender={msg.sender.name}
+                  isSystemMessage={msg.sender.name !== username}
+                  createdAt={msg.createdAt}
                 />
               ))}
               <div ref={messagesEndRef} />
