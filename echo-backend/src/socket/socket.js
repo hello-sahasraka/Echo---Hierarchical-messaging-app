@@ -28,6 +28,7 @@ export const setup_socket = (server) => {
         try {
             const payload = jwt.verify(token, process.env.JWT_KEY);
             
+
             socket.data.userId = String(payload.id);
             next();
         } catch (err) {
@@ -38,6 +39,8 @@ export const setup_socket = (server) => {
     // On connection
     io.on("connection", async (socket) => {
         const userId = socket.data.userId;
+        console.log("Debug: ", userId);
+
         console.log(`User ${userId} connected with socket ${socket.id}`);
 
         // Track online users
@@ -89,6 +92,8 @@ export const setup_socket = (server) => {
                 for (const p of participants) {
                     if (String(p.user_id) === String(senderId)) continue;
 
+
+                    console.log("Debug, before saving the message: ", senderId);
                     const msg = await Message.create({
                         chat_id: chatId,
                         sender_id: senderId,
@@ -112,7 +117,7 @@ export const setup_socket = (server) => {
                     }
                 }
 
-                ack({ ok: true });
+                ack({ ok: true, error: "None" });
             } catch (err) {
                 console.error("send_message error:", err);
                 ack({ ok: false, error: err.message });
@@ -123,6 +128,10 @@ export const setup_socket = (server) => {
         socket.on("get_all_chats", async (ack) => {
             try {
                 const chats = await get_chat_list(userId)
+                console.log("------------------Chat List---------------------");
+                console.log("Chat List", chats);
+                console.log("------------------Chat List---------------------");
+
                 ack({ ok: true, chats });
             } catch (err) {
                 console.error("get_chat_list error:", err);

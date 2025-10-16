@@ -1,12 +1,24 @@
 import db from "../models/sequelize.js";
-import { get_subordinates } from "./user.controls.js";
+import { get_subordinates, get_user_by_id } from "./user.controls.js";
 
 const Chat = db.chats;
 const Participant = db.participants;
+const Message = db.messages;
+const User = db.users;
 
 export const create_chat = async (req, res) => {
     try {
-        const { userId } = req.body;
+        const { userId } = req.params;
+        
+        if (!userId) {
+            return res.status(400).json({ message: "User ID is required." });
+        }
+
+        const user = await get_user_by_id(userId);
+
+        if (!user) {
+            return res.status(404).json({ message: "User not found." });
+        }
 
         const subordinates = await get_subordinates(userId);
         if (!subordinates || subordinates.length === 0) {
@@ -63,12 +75,27 @@ export const create_chat = async (req, res) => {
 };
 
 export const get_chat_list = async (userId) => {
+    console.log("UserID:", userId);
+
     try {
         const chats = await Chat.findAll({
             include: [
                 {
+                    model: Participant,
+                    as: "participants",
+                    attributes: ["user_id"],
+                    where: { user_id: userId } // ✅ Only chats where this user participates
+                },
+                {
                     model: Message,
                     as: "messages",
+                    include: [
+                        {
+                            model: User,
+                            as: "sender",
+                            attributes: ["id", "name"]
+                        }
+                    ],
                     order: [["createdAt", "DESC"]],
                 },
                 {
@@ -78,17 +105,33 @@ export const get_chat_list = async (userId) => {
                 }
             ],
             order: [["id", "DESC"]],
+            distinct: true // ✅ Prevent Sequelize from duplicating rows when joining
         });
 
-        //Format for frontend
+        // ✅ Remove duplicate messages (same content + sender + timestamp)
         const chatList = chats.map(chat => {
+            const uniqueMessages = [];
+            const seen = new Set();
+
+            for (const msg of chat.messages) {
+                const key = `${msg.content}-${msg.sender_id}-${msg.createdAt}`;
+                if (!seen.has(key)) {
+                    seen.add(key);
+                    uniqueMessages.push(msg);
+                }
+            }
+
+            // keep your format exactly the same
             let participantName = chat.creator.id === userId ? "You" : chat.creator.name;
-            const lastMessage = chat.messages.length ? chat.messages[chat.messages.length - 1].content : "";
+            const lastMessage = uniqueMessages.length
+                ? uniqueMessages[uniqueMessages.length - 1].content
+                : "";
+
             return {
                 id: chat.id,
                 name: participantName,
                 lastMessage,
-                messages: chat.messages
+                messages: uniqueMessages
             };
         });
 
@@ -98,3 +141,4 @@ export const get_chat_list = async (userId) => {
         throw err;
     }
 };
+

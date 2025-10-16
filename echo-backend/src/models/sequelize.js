@@ -34,4 +34,13 @@ db.users.hasMany(db.chats, { foreignKey: "creator_id", as: "createdChats" });
 db.messages.belongsTo(db.users, { foreignKey: "sender_id", as: "sender" });
 db.users.hasMany(db.messages, { foreignKey: "sender_id", as: "sentMessages" });
 
+// Chat → Participants
+db.chats.hasMany(db.participants, { foreignKey: "chat_id", as: "participants" });
+db.participants.belongsTo(db.chats, { foreignKey: "chat_id", as: "chat" });
+
+// Participant → User
+db.participants.belongsTo(db.users, { foreignKey: "user_id", as: "user" });
+db.users.hasMany(db.participants, { foreignKey: "user_id", as: "participations" });
+
+
 export default db;
