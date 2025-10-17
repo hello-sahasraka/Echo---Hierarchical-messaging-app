@@ -33,7 +33,7 @@ const ChatMessage = ({
                 <div className="chat chat-end">
                     <div className="chat-header">
                         You
-                        <time className="text-xs opacity-50">2 hours ago</time>
+                        <time className="text-xs opacity-50">{createdAt ? `${formatDistanceToNow(new Date(createdAt))} ago` : ''}</time>
                     </div>
                     <div className="chat-bubble chat-bubble-neutral">{message}</div>
                     <div className="chat-footer opacity-50">Seen</div>

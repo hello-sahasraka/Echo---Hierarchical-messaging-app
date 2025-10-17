@@ -4,6 +4,8 @@ import { Toaster } from "react-hot-toast";
 import { SocketProvider } from "../app/context/SocketContext";
 // @ts-ignore: side-effect import of CSS; add a global declaration file (e.g. globals.d.ts) to type CSS imports properly
 import "./globals.css";
+import NavBar from "./components/NavBar";
+import { LoggedProvider } from "./context/logginContext";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -28,15 +30,13 @@ export default function RootLayout({
   return (
     <html data-theme="cupcake" lang="en">
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
-        <div className="w-full h-[75px] border-2 flex justify-center">
-          <div className="navbar bg-neutral text-neutral-content">
-            <h1 className="text-xl font-semibold px-3 py-2 rounded hover:bg-gray-300 hover:text-black transition">Echo</h1>
+        <LoggedProvider>
+          <NavBar />
+          <div className="flex justify-center">
+            <SocketProvider>{children}</SocketProvider>
+            <Toaster position="top-right" />
           </div>
-        </div>
-        <div className="flex justify-center">
-          <SocketProvider>{children}</SocketProvider>
-          <Toaster position="top-right" />
-        </div>
+        </LoggedProvider>
       </body>
     </html>
   );

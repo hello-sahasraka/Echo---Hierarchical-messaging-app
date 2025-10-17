@@ -70,9 +70,10 @@ const Chat: React.FC = () => {
     }
 
     // Listen for real-time messages from server.
-    const onNewMessage = (payload: { chatId: number; message: Message }) => {
+    const onNewMessage = (payload: { chatId: number; message: Message }, ack: (response: any) => void) => {
       const { chatId, message } = payload;
-
+      console.log(payload);
+      
       setChats((prev) =>
         prev.map((c) =>
           c.id === chatId
@@ -84,6 +85,7 @@ const Chat: React.FC = () => {
       setActiveChat((prev) =>
         prev && prev.id === chatId ? { ...prev, messages: [...prev.messages, message] } : prev
       );
+      ack(true);
     };
 
     socket.on('new_message', onNewMessage);
