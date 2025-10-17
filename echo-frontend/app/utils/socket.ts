@@ -1,4 +1,7 @@
 import { io, Socket } from "socket.io-client";
+import mitt from "mitt";
+
+export const socketEvents = mitt();
 
 let socket: Socket | null = null;
 
@@ -42,7 +45,12 @@ export const init_socket = (token?: string) => {
 
         socket.on("new_message", (msg, ack) => {
             console.log("New message:", msg);
-            if (typeof ack === "function") ack(true);
+            // Try to derive chatId from common fields (chatId or chat_id)
+            const chatId = (msg as any)?.chatId ?? (msg as any)?.chat_id ?? (msg as any)?.chat?.id;
+            // Emit a normalized payload so listeners have both chatId and message,
+            // and pass the ack function so the UI can acknowledge when ready.
+            socketEvents.emit("new_message", { chatId, message: msg, ack });
+            // Do NOT ack here immediately — let the UI ack when it's handled.
         });
     }
 
@@ -59,9 +67,9 @@ export const disconnect_socket = () => {
 };
 
 export const reset_socket = (token?: string) => {
-  if (socket) {
-    socket.disconnect();
-    socket = null;
-  }
-  return init_socket(token);
+    if (socket) {
+        socket.disconnect();
+        socket = null;
+    }
+    return init_socket(token);
 };

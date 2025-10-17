@@ -54,7 +54,7 @@ export const setup_socket = (server) => {
 
         // Send undelivered messages
         for (const msg of undelivered) {
-            socket.emit("new_message", msg.toJSON(), async (ack) => {
+            socket.emit("new_undelivered_message", msg.toJSON(), async (ack) => {
                 if (ack) {
                     msg.delivered = true;
                     msg.delivered_at = new Date();

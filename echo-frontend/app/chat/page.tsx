@@ -5,6 +5,7 @@ import ChatForm from '../components/ChatForm';
 import ChatMessage from '../components/ChatMessage';
 import Image from 'next/image';
 import { useSocket } from '../context/SocketContext';
+import { socketEvents } from '../utils/socket';
 import toast from 'react-hot-toast';
 
 interface Sender {
@@ -70,29 +71,52 @@ const Chat: React.FC = () => {
     }
 
     // Listen for real-time messages from server.
-    const onNewMessage = (payload: { chatId: number; message: Message }, ack: (response: any) => void) => {
-      const { chatId, message } = payload;
-      console.log(payload);
-      
-      setChats((prev) =>
-        prev.map((c) =>
-          c.id === chatId
-            ? { ...c, messages: [...c.messages, message], lastMessage: message.content }
-            : c
+    const onNewMessage = (payload: unknown) => {
+      const p: any = payload || {};
+      // Support either { chatId, message, ack } or a raw message object (with chat_id)
+      const chatId = p.chatId ?? p.chat_id ?? p.message?.chat_id ?? p.message?.chatId;
+      const rawMessage = p.message ?? p;
+      if (!rawMessage) return;
+
+      // normalize message so UI has .sender { id, name } and sender_id
+      const normalizedMessage: Message = rawMessage.sender
+        ? rawMessage
+        : {
+          ...rawMessage,
+          sender: {
+            id: rawMessage.sender_id ?? rawMessage.senderId ?? 0,
+            name: rawMessage.sender_name ?? `User ${rawMessage.sender_id ?? rawMessage.senderId ?? 'unknown'}`,
+          },
+          sender_id: rawMessage.sender_id ?? rawMessage.senderId ?? 0,
+          content: rawMessage.content ?? rawMessage.message ?? '',
+          createdAt: rawMessage.createdAt ?? rawMessage.created_at,
+        };
+
+      setChats((prevChats) =>
+        prevChats.map((chat) =>
+          chat.id === chatId
+            ? { ...chat, messages: [...chat.messages, normalizedMessage], lastMessage: normalizedMessage.content }
+            : chat
         )
       );
 
       setActiveChat((prev) =>
-        prev && prev.id === chatId ? { ...prev, messages: [...prev.messages, message] } : prev
+        prev && prev.id === chatId ? { ...prev, messages: [...prev.messages, normalizedMessage] } : prev
       );
-      ack(true);
+
+      // If ack function was passed inside payload, call it
+      if (typeof p.ack === 'function') {
+        try {
+          p.ack(true);
+        } catch { /* ignore */ }
+      }
     };
 
-    socket.on('new_message', onNewMessage);
+    socketEvents.on('new_message', onNewMessage);
 
     return () => {
       socket.off('connect', fetchChats);
-      socket.off('new_message', onNewMessage);
+      socketEvents.off('new_message', onNewMessage);
     };
   }, [socket]);
 
