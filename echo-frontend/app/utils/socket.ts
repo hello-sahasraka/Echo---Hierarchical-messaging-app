@@ -45,12 +45,16 @@ export const init_socket = (token?: string) => {
 
         socket.on("new_message", (msg, ack) => {
             console.log("New message:", msg);
-            // Try to derive chatId from common fields (chatId or chat_id)
             const chatId = (msg as any)?.chatId ?? (msg as any)?.chat_id ?? (msg as any)?.chat?.id;
-            // Emit a normalized payload so listeners have both chatId and message,
-            // and pass the ack function so the UI can acknowledge when ready.
+
+            // Emit the message to chat
             socketEvents.emit("new_message", { chatId, message: msg, ack });
-            // Do NOT ack here immediately — let the UI ack when it's handled.
+
+            // Properly acknowledge receipt to backend
+            // if (typeof ack === 'function') {
+            //     console.log("ack recieved"); 
+            //     ack(true);
+            // }
         });
     }
 

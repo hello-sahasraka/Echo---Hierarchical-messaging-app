@@ -3,9 +3,10 @@ import { formatDistanceToNow } from 'date-fns';
 
 interface ChatMessageProps {
     message: string;
-    sender?: string; // optional, for system messages
+    sender?: string;
     isSystemMessage?: boolean;
     createdAt?: string;
+    isRead?: boolean;
 }
 
 const ChatMessage = ({
@@ -13,6 +14,7 @@ const ChatMessage = ({
     sender = 'System',
     isSystemMessage = false,
     createdAt,
+    isRead,
 }: ChatMessageProps) => {
     return (
         <div
@@ -27,7 +29,7 @@ const ChatMessage = ({
                         </time>
                     </div>
                     <div className="chat-bubble">{message}</div>
-                    <div className="chat-footer opacity-50">Seen</div>
+                    <div className="chat-footer opacity-50">{isRead ? 'Seen' : 'Unseen'}</div>
                 </div>
                 :
                 <div className="chat chat-end">
@@ -36,7 +38,6 @@ const ChatMessage = ({
                         <time className="text-xs opacity-50">{createdAt ? `${formatDistanceToNow(new Date(createdAt))} ago` : ''}</time>
                     </div>
                     <div className="chat-bubble chat-bubble-neutral">{message}</div>
-                    <div className="chat-footer opacity-50">Seen</div>
                 </div>
             }
         </div>

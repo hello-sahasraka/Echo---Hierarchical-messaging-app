@@ -62,6 +62,7 @@ export const setup_socket = (server) => {
                 }
             });
         }
+
         // Handle sending messages
         socket.on("send_message", async ({ chatId, content }, ack) => {
             if (!chatId || !content.trim()) return ack({ ok: false, error: "Invalid input" });
@@ -108,6 +109,7 @@ export const setup_socket = (server) => {
                         for (const sid of sockets) {
                             io.to(sid).emit("new_message", msg.toJSON(), async (ack2) => {
                                 if (ack2) {
+                                    console.log("Debug: Message delivered", msg.id);                     
                                     msg.delivered = true;
                                     msg.delivered_at = new Date();
                                     await msg.save();

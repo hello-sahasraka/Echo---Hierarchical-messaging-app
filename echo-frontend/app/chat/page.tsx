@@ -18,6 +18,7 @@ interface Message {
   sender_id: number;
   content: string;
   createdAt?: string;
+  isRead?: boolean;
 }
 
 interface ChatItem {
@@ -78,6 +79,11 @@ const Chat: React.FC = () => {
       const rawMessage = p.message ?? p;
       if (!rawMessage) return;
 
+      if (typeof p.ack === 'function') {
+        console.log("ack recieved");
+        p.ack(true);
+      }
+
       // normalize message so UI has .sender { id, name } and sender_id
       const normalizedMessage: Message = rawMessage.sender
         ? rawMessage
@@ -104,12 +110,6 @@ const Chat: React.FC = () => {
         prev && prev.id === chatId ? { ...prev, messages: [...prev.messages, normalizedMessage] } : prev
       );
 
-      // If ack function was passed inside payload, call it
-      if (typeof p.ack === 'function') {
-        try {
-          p.ack(true);
-        } catch { /* ignore */ }
-      }
     };
 
     socketEvents.on('new_message', onNewMessage);
@@ -164,6 +164,10 @@ const Chat: React.FC = () => {
       prev ? { ...prev, messages: [...prev.messages, newMessage] } : prev
     );
   };
+
+  const handleActiveChat = () => {
+
+  }
 
   return (
     <div className="flex w-2/3 h-[600px] mt-12 border rounded shadow-md overflow-hidden bg-white">
@@ -220,6 +224,7 @@ const Chat: React.FC = () => {
                   sender={msg.sender.name}
                   isSystemMessage={msg.sender.name !== username}
                   createdAt={msg.createdAt}
+                  isRead={msg.isRead}
                 />
               ))}
               <div ref={messagesEndRef} />
