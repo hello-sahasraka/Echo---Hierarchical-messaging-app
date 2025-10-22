@@ -47,14 +47,26 @@ export const init_socket = (token?: string) => {
             console.log("New message:", msg);
             const chatId = (msg as any)?.chatId ?? (msg as any)?.chat_id ?? (msg as any)?.chat?.id;
 
-            // Emit the message to chat
-            socketEvents.emit("new_message", { chatId, message: msg, ack });
+            // Ack immediately at transport layer to avoid UI timing issues
+            if (typeof ack === "function") {
+                try { ack(true); } catch (e) { console.warn("ack failed:", e); }
+            }
 
-            // Properly acknowledge receipt to backend
-            // if (typeof ack === 'function') {
-            //     console.log("ack recieved"); 
-            //     ack(true);
-            // }
+            // Emit to UI
+            socketEvents.emit("new_message", { chatId, message: msg });
+        });
+
+        // Also handle undelivered messages sent on reconnect
+        socket.on("new_undelivered_message", (msg, ack) => {
+            console.log("Undelivered message:", msg);
+            const chatId = (msg as any)?.chatId ?? (msg as any)?.chat_id ?? (msg as any)?.chat?.id;
+
+            if (typeof ack === "function") {
+                try { ack(true); } catch (e) { console.warn("undelivered ack failed:", e); }
+            }
+
+            // Reuse same UI event so the screen updates identically
+            socketEvents.emit("new_message", { chatId, message: msg });
         });
     }
 

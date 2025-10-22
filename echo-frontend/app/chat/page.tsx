@@ -7,6 +7,7 @@ import Image from 'next/image';
 import { useSocket } from '../context/SocketContext';
 import { socketEvents } from '../utils/socket';
 import toast from 'react-hot-toast';
+import { log } from 'console';
 
 interface Sender {
   id: number;
@@ -58,6 +59,8 @@ const Chat: React.FC = () => {
       socket.emit('get_all_chats', (response: { ok: boolean; chats: ChatItem[] }) => {
         if (response.ok) {
           setChats(response.chats);
+          console.log(response.chats);
+          
         } else {
           toast.error('Failed to fetch chats');
         }
@@ -165,9 +168,33 @@ const Chat: React.FC = () => {
     );
   };
 
-  const handleActiveChat = () => {
+  const handleActiveChat = (chat: ChatItem) => {
+    console.log(chat);
+    
+    setActiveChat(chat);
+    if (!socket) {
+      console.warn('Socket not available, cannot mark chat as read');
+      return;
+    }
+    socket.emit("mark_read", { chatId: chat.id }, (ack: any) => {
+      if (!ack.ok) {
+        console.error('Failed to mark chat as read:', ack.error);
+        return;
+      }
 
-  }
+      // Optimistically update local state so UI reflects read status
+      setChats(prev =>
+        prev.map(c =>
+          c.id === chat.id
+            ? { ...c, messages: c.messages.map(m => ({ ...m, isRead: true })) }
+            : c
+        )
+      );
+      setActiveChat(prev =>
+        prev ? { ...prev, messages: prev.messages.map(m => ({ ...m, isRead: true })) } : prev
+      );
+    });
+  };
 
   return (
     <div className="flex w-2/3 h-[600px] mt-12 border rounded shadow-md overflow-hidden bg-white">
@@ -183,7 +210,7 @@ const Chat: React.FC = () => {
           {chats.map((chat) => (
             <div
               key={chat.id}
-              onClick={() => setActiveChat(chat)}
+              onClick={() => handleActiveChat(chat)}
               className={`p-3 cursor-pointer border-b hover:bg-gray-100 transition flex gap-4 ${activeChat?.id === chat.id ? 'bg-gray-200' : ''
                 }`}
             >
@@ -224,7 +251,7 @@ const Chat: React.FC = () => {
                   sender={msg.sender.name}
                   isSystemMessage={msg.sender.name !== username}
                   createdAt={msg.createdAt}
-                  isRead={msg.isRead}
+                  isRead={msg.isRead ? true : false}
                 />
               ))}
               <div ref={messagesEndRef} />

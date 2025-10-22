@@ -27,7 +27,7 @@ export const setup_socket = (server) => {
 
         try {
             const payload = jwt.verify(token, process.env.JWT_KEY);
-            
+
 
             socket.data.userId = String(payload.id);
             next();
@@ -39,8 +39,8 @@ export const setup_socket = (server) => {
     // On connection
     io.on("connection", async (socket) => {
         const userId = socket.data.userId;
-        console.log("Debug: ", userId);
-
+        const senderUser = await User.findByPk(userId);
+        
         console.log(`User ${userId} connected with socket ${socket.id}`);
 
         // Track online users
@@ -103,13 +103,18 @@ export const setup_socket = (server) => {
                         delivered: false,
                     });
 
+                    const payload = {
+                        ...msg.toJSON(),
+                        sender: { id: senderId, name: senderUser?.name || `User ${senderId}` },
+                    };
+
                     const sockets = onlineUsers.get(String(p.user_id));
 
                     if (sockets && sockets.size > 0) {
                         for (const sid of sockets) {
-                            io.to(sid).emit("new_message", msg.toJSON(), async (ack2) => {
+                            io.to(sid).emit("new_message", payload, async (ack2) => {
                                 if (ack2) {
-                                    console.log("Debug: Message delivered", msg.id);                     
+                                    console.log("Debug: Message delivered", msg.id);
                                     msg.delivered = true;
                                     msg.delivered_at = new Date();
                                     await msg.save();
@@ -126,13 +131,66 @@ export const setup_socket = (server) => {
             }
         });
 
+        // Mark messages as read
+        socket.on("mark_read", async ({ chatId }, ack) => {
+            if (!chatId) {
+                return ack({ ok: false, error: "Invalid chatId" });
+            }
+
+            if (!userId) {
+                return ack({ ok: false, error: "User not authenticated" });
+            }
+
+            try {
+                // Perform update and get count
+                const [updatedCount] = await Message.update(
+                    { isRead: true },
+                    {
+                        where: {
+                            chat_id: chatId,
+                            recipient_id: userId,
+                            isRead: false
+                        }
+                    }
+                );
+
+                console.log("Rows updated:", updatedCount);
+
+
+                // Broadcast to other participants
+                // Notify other users in the chat that messages were read
+                // if (updatedCount > 0) {    
+                //     const participants = await Participant.findAll({
+                //         where: { chat_id: chatId },
+                //         attributes: ['user_id']
+                //     });
+
+                //     for (const p of participants) {
+                //         if (String(p.user_id) === String(userId)) continue;
+
+                //         const sockets = onlineUsers.get(String(p.user_id));
+                //         if (sockets) {
+                //             for (const sid of sockets) {
+                //                 io.to(sid).emit("messages_read", {
+                //                     chatId,
+                //                     readBy: userId
+                //                 });
+                //             }
+                //         }
+                //     }
+                // }
+
+                ack({ ok: true, updatedCount });
+            } catch (err) {
+                console.error("mark_read error:", err);
+                ack({ ok: false, error: err.message });
+            }
+        });
+
         //Get all chats
         socket.on("get_all_chats", async (ack) => {
             try {
                 const chats = await get_chat_list(userId)
-                console.log("------------------Chat List---------------------");
-                console.log("Chat List", chats);
-                console.log("------------------Chat List---------------------");
 
                 ack({ ok: true, chats });
             } catch (err) {
