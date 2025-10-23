@@ -49,17 +49,21 @@ const NavBar = () => {
 
     return (
         <div className="w-full h-[75px] border-b-2 flex items-center justify-between px-6 bg-neutral text-neutral-content">
-            <h1 className="text-3xl font-semibold hover:bg-gray-300 hover:text-black px-3 py-2 rounded transition">
+            <h1 className="text-3xl font-semibold px-3 py-2 rounded transition">
                 Echo
             </h1>
 
 
             {logged && <>
                 {userData &&
-                    <div className="text-xl italic font-semibold">
-                        <span>{userData.name}</span>&nbsp;
-                        (<span>{userData.role}</span>)
-                    </div>}
+                    <div className="text-xl font-semibold flex items-center gap-2 text-gray-200">
+                        <span className="w-10 h-10 flex items-center justify-center text-gray-600 bg-gray-300 rounded-full">
+                            {userData.name[0]}
+                        </span>
+                        <span>{userData.name}</span>
+                        <span className="text-gray-400">({userData.role})</span>
+                    </div>
+                }
 
 
                 <button

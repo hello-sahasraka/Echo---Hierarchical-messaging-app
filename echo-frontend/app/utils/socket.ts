@@ -47,12 +47,10 @@ export const init_socket = (token?: string) => {
             console.log("New message:", msg);
             const chatId = (msg as any)?.chatId ?? (msg as any)?.chat_id ?? (msg as any)?.chat?.id;
 
-            // Ack immediately at transport layer to avoid UI timing issues
             if (typeof ack === "function") {
                 try { ack(true); } catch (e) { console.warn("ack failed:", e); }
             }
 
-            // Emit to UI
             socketEvents.emit("new_message", { chatId, message: msg });
         });
 
@@ -65,8 +63,13 @@ export const init_socket = (token?: string) => {
                 try { ack(true); } catch (e) { console.warn("undelivered ack failed:", e); }
             }
 
-            // Reuse same UI event so the screen updates identically
             socketEvents.emit("new_message", { chatId, message: msg });
+        });
+
+        // NEW: forward messages_read to the UI bus
+        socket.on("messages_read", (payload) => {
+            console.log("messages_read:", payload);
+            socketEvents.emit("messages_read", payload);
         });
     }
 

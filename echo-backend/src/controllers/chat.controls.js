@@ -11,23 +11,24 @@ export const create_chat = async (req, res) => {
         const { userId } = req.params;
         
         if (!userId) {
-            return res.status(400).json({ message: "User ID is required." });
+            return res.status(400).json({ message: "User ID is required" });
         }
 
         const user = await get_user_by_id(userId);
 
         if (!user) {
-            return res.status(404).json({ message: "User not found." });
+            return res.status(404).json({ message: "User not found" });
         }
 
         const subordinates = await get_subordinates(userId);
         if (!subordinates || subordinates.length === 0) {
-            return res.status(400).json({ message: "No subordinates found." });
+            return res.status(400).json({ message: "No subordinates found" });
         }
 
         const existing = await Chat.findOne({ where: { creator_id: userId } });
+
         if (existing) {
-            return res.status(400).json({ message: "You must delete the existing chat first." });
+            return res.status(400).json({ message: "You must delete the existing chat first" });
         }
 
         const chat = await Chat.create({ creator_id: userId });
@@ -38,7 +39,7 @@ export const create_chat = async (req, res) => {
         ];
 
 
-        // Prepare participant list (creator + subordinates)
+        // Prepare participant list
         const participants = [
             { chat_id: chat.id, user_id: userId, role: "creator", joined_at: new Date() },
             ...uniqueSubs.map(sub => ({
@@ -48,15 +49,6 @@ export const create_chat = async (req, res) => {
                 joined_at: new Date(),
             })),
         ];
-        // const participants = [
-        //     { chat_id: chat.id, user_id: userId, role: "creator", joined_at: new Date() },
-        //     ...subordinates.map(sub => ({
-        //         chat_id: chat.id,
-        //         user_id: sub.id,
-        //         role: "subordinate",
-        //         joined_at: new Date(),
-        //     })),
-        // ];
 
         // Insert participants
         await Participant.bulkCreate(participants);
@@ -84,7 +76,7 @@ export const get_chat_list = async (userId) => {
                     model: Participant,
                     as: "participants",
                     attributes: ["user_id"],
-                    where: { user_id: userId } // ✅ Only chats where this user participates
+                    where: { user_id: userId }
                 },
                 {
                     model: Message,
@@ -105,10 +97,10 @@ export const get_chat_list = async (userId) => {
                 }
             ],
             order: [["id", "DESC"]],
-            distinct: true // ✅ Prevent Sequelize from duplicating rows when joining
+            distinct: true 
         });
 
-        // ✅ Remove duplicate messages (same content + sender + timestamp)
+        
         const chatList = chats.map(chat => {
             const uniqueMessages = [];
             const seen = new Set();

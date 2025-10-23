@@ -40,7 +40,7 @@ export const setup_socket = (server) => {
     io.on("connection", async (socket) => {
         const userId = socket.data.userId;
         const senderUser = await User.findByPk(userId);
-        
+
         console.log(`User ${userId} connected with socket ${socket.id}`);
 
         // Track online users
@@ -157,28 +157,27 @@ export const setup_socket = (server) => {
                 console.log("Rows updated:", updatedCount);
 
 
-                // Broadcast to other participants
-                // Notify other users in the chat that messages were read
-                // if (updatedCount > 0) {    
-                //     const participants = await Participant.findAll({
-                //         where: { chat_id: chatId },
-                //         attributes: ['user_id']
-                //     });
+                if (updatedCount > 0) {
+                    const participants = await Participant.findAll({
+                        where: { chat_id: chatId },
+                        attributes: ['user_id']
+                    });
 
-                //     for (const p of participants) {
-                //         if (String(p.user_id) === String(userId)) continue;
+                    for (const p of participants) {
+                        if (String(p.user_id) === String(userId)) continue; 
 
-                //         const sockets = onlineUsers.get(String(p.user_id));
-                //         if (sockets) {
-                //             for (const sid of sockets) {
-                //                 io.to(sid).emit("messages_read", {
-                //                     chatId,
-                //                     readBy: userId
-                //                 });
-                //             }
-                //         }
-                //     }
-                // }
+                        const sockets = onlineUsers.get(String(p.user_id));
+                        if (sockets) {
+                            for (const sid of sockets) {      
+                                io.to(sid).emit("messages_read", {
+                                    chatId,
+                                    readBy: userId
+                                });
+                            }
+                        }
+                    }
+                }
+
 
                 ack({ ok: true, updatedCount });
             } catch (err) {

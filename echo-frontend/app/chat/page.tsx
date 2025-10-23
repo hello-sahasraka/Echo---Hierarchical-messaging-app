@@ -7,7 +7,7 @@ import Image from 'next/image';
 import { useSocket } from '../context/SocketContext';
 import { socketEvents } from '../utils/socket';
 import toast from 'react-hot-toast';
-import { log } from 'console';
+import { MessageCirclePlus } from 'lucide-react';
 
 interface Sender {
   id: number;
@@ -31,10 +31,10 @@ interface ChatItem {
 
 const Chat: React.FC = () => {
   const socket = useSocket();
-  const [chats, setChats] = useState<ChatItem[]>([
-    { id: 1, name: 'Alex', lastMessage: 'Hey, how are you?', messages: [] },
-    { id: 2, name: 'Maya', lastMessage: 'Meeting at 3pm?', messages: [] },
-  ]);
+  const [chats, setChats] = useState<ChatItem[]>([]);
+  
+    // { id: 1, name: 'Alex', lastMessage: 'Hey, how are you?', messages: [] },
+    // { id: 2, name: 'Maya', lastMessage: 'Meeting at 3pm?', messages: [] },
 
   const [activeChat, setActiveChat] = useState<ChatItem | null>(null);
   const [username, setUsername] = useState<string>('You');
@@ -60,34 +60,24 @@ const Chat: React.FC = () => {
         if (response.ok) {
           setChats(response.chats);
           console.log(response.chats);
-          
         } else {
           toast.error('Failed to fetch chats');
         }
       });
     };
 
-    // fetch immediately if already connected, otherwise wait for connect
     if (socket.connected) {
       fetchChats();
     } else {
       socket.once('connect', fetchChats);
     }
 
-    // Listen for real-time messages from server.
-    const onNewMessage = (payload: unknown) => {
-      const p: any = payload || {};
-      // Support either { chatId, message, ack } or a raw message object (with chat_id)
+    const onNewMessage = (payload: any) => {
+      const p = payload || {};
       const chatId = p.chatId ?? p.chat_id ?? p.message?.chat_id ?? p.message?.chatId;
       const rawMessage = p.message ?? p;
       if (!rawMessage) return;
 
-      if (typeof p.ack === 'function') {
-        console.log("ack recieved");
-        p.ack(true);
-      }
-
-      // normalize message so UI has .sender { id, name } and sender_id
       const normalizedMessage: Message = rawMessage.sender
         ? rawMessage
         : {
@@ -101,27 +91,50 @@ const Chat: React.FC = () => {
           createdAt: rawMessage.createdAt ?? rawMessage.created_at,
         };
 
-      setChats((prevChats) =>
-        prevChats.map((chat) =>
+      setChats(prev =>
+        prev.map(chat =>
           chat.id === chatId
             ? { ...chat, messages: [...chat.messages, normalizedMessage], lastMessage: normalizedMessage.content }
             : chat
         )
       );
 
-      setActiveChat((prev) =>
+      setActiveChat(prev =>
         prev && prev.id === chatId ? { ...prev, messages: [...prev.messages, normalizedMessage] } : prev
       );
-
     };
 
+    const onMessagesRead = (payload: any) => {
+      const { chatId, readBy } = payload;
+
+      if (userId != null && String(readBy) === String(userId)) {
+        // ignore if this client is the reader
+        return;
+      }
+
+      setChats(prev =>
+        prev.map(c =>
+          c.id === chatId
+            ? { ...c, messages: c.messages.map(m => ({ ...m, isRead: true })) }
+            : c
+        )
+      );
+
+      setActiveChat(prev =>
+        !prev || prev.id !== chatId ? prev : { ...prev, messages: prev.messages.map(m => ({ ...m, isRead: true })) }
+      );
+    };
+
+    // Subscribe to mitt bus (consistent with utils/socket.ts)
     socketEvents.on('new_message', onNewMessage);
+    socketEvents.on('messages_read', onMessagesRead);
 
     return () => {
       socket.off('connect', fetchChats);
       socketEvents.off('new_message', onNewMessage);
+      socketEvents.off('messages_read', onMessagesRead);
     };
-  }, [socket]);
+  }, [socket, userId]);
 
   //Auto scroll to bottom
   useEffect(() => {
@@ -169,35 +182,58 @@ const Chat: React.FC = () => {
   };
 
   const handleActiveChat = (chat: ChatItem) => {
-    console.log(chat);
-    
+
     setActiveChat(chat);
     if (!socket) {
       console.warn('Socket not available, cannot mark chat as read');
       return;
     }
     socket.emit("mark_read", { chatId: chat.id }, (ack: any) => {
-      if (!ack.ok) {
-        console.error('Failed to mark chat as read:', ack.error);
+      if (!ack.ok && ack.updatedCount > 0) {
+        console.warn('Failed to mark messages as read on server');
         return;
       }
 
-      // Optimistically update local state so UI reflects read status
-      setChats(prev =>
-        prev.map(c =>
-          c.id === chat.id
-            ? { ...c, messages: c.messages.map(m => ({ ...m, isRead: true })) }
-            : c
-        )
-      );
-      setActiveChat(prev =>
-        prev ? { ...prev, messages: prev.messages.map(m => ({ ...m, isRead: true })) } : prev
-      );
     });
   };
 
+  const handleCreateChat = async () => {
+    if (!socket) return;
+    if (!userId) return;
+
+    try {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/chat/createchat/${userId}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        toast.error(`${data.message}`);
+        throw new Error("Failed to create chat");
+      }
+
+      toast.success("Chat created successfully");
+
+    } catch (e) {
+      console.error("Error creating chat:", e);
+    }
+  };
+
   return (
-    <div className="flex w-2/3 h-[600px] mt-12 border rounded shadow-md overflow-hidden bg-white">
+    <div className="flex w-2/3 h-[600px] mt-12 border rounded shadow-md overflow-hidden bg-white relative">
+
+      <div
+        className='p-4 absolute bottom-0 left-0 cursor-pointer hover:scale-115 transition-transform inline-block'
+        title='Create Chat'
+        onClick={handleCreateChat}>
+        <MessageCirclePlus size={45} />
+      </div>
+
       {/* Chat List Section */}
       <div className="w-1/3 border-r bg-gray-50">
         <div className="p-4 border-b">
